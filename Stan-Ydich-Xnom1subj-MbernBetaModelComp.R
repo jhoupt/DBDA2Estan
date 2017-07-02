@@ -68,7 +68,7 @@ genMCMC = function( data , numSavedSteps=50000 , saveName=NULL ) {
     }
 
     for (i in 1:Ntotal) {
-      increment_log_prob( log_sum_exp( log(mProb[1]) + bernoulli_log(y[i], theta[1]), log(mProb[2]) + bernoulli_log(y[i], theta[2]) ) );
+      target +=  log_sum_exp( log(mProb[1]) + bernoulli_log(y[i], theta[1]), log(mProb[2]) + bernoulli_log(y[i], theta[2]) ) ;
     }
 
   }

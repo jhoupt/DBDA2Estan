@@ -116,8 +116,8 @@ model {
     #logProb2 <- log(1-modelProb1) + beta_log( theta[s], aBeta, bBeta );
     prob2 <- (1-modelProb1)*exp(beta_log( theta[s], aBeta, bBeta ));
 
-    #increment_log_prob( log_sum_exp(logProb1, logProb2) ); 
-    increment_log_prob( log(prob1 + prob2) ); 
+    #target +=  log_sum_exp(logProb1, logProb2) ; 
+    target +=  log(prob1 + prob2) ; 
   }
   for ( j in 1:nCond ) {
     kappaMinusTwo[j] ~ gamma( 2.618 , 0.0809 ); # mode 20 , sd 20
