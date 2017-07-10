@@ -45,109 +45,28 @@ genMCMC = function( datFrm , yName="y" , x1Name="x1" , x2Name="x2" ,
     y = y ,
     x1 = x1 ,
     x2 = x2 ,
-    Ncell = Ncell ,
-    Nx1Lvl = Nx1Lvl ,
-    Nx2Lvl = Nx2Lvl ,
-    yLogMean = yLogMean ,
-    yLogSD = yLogSD ,
-    agammaShRa = agammaShRa 
+    n_cell = Ncell ,
+    n_x1_lvl = Nx1Lvl ,
+    n_x2_lvl = Nx2Lvl ,
+    y_log_mean = yLogMean ,
+    y_log_sd = yLogSD ,
+    a_gamma_sh_ra = agammaShRa 
   )
-  #------------------------------------------------------------------------------
-  # THE MODEL.
-  modelString = "
-  data {
-    int<lower=1> Ncell;
-    int<lower=0> y[Ncell];
-    int x1[Ncell];
-    int x2[Ncell];
-    int<lower=1>Nx1Lvl;
-    int<lower=1>Nx2Lvl;
-    real yLogMean;
-    real yLogSD;
-    real agammaShRa[2];
-  }
-  parameters {
-    real a0;
-    real a1[Nx1Lvl];
-    real a2[Nx2Lvl];
-    real<lower=0> a1SD;
-    real<lower=0> a2SD;
-    real a1a2[Nx1Lvl,Nx2Lvl];
-    real<lower=0> a1a2SD;
-  }
-  transformed parameters { 
-    real<lower=0> lambda[Ncell];
-    matrix[Nx1Lvl,Nx2Lvl] m;
-    real b0;
-    real b1[Nx1Lvl];
-    real b2[Nx2Lvl];
-    real b1b2[Nx1Lvl,Nx2Lvl];
-    matrix[Nx1Lvl,Nx2Lvl] expm;
-    matrix[Nx1Lvl,Nx2Lvl] ppx1x2p;
-    real<lower=0> ppx1p[Nx1Lvl];
-    real<lower=0> ppx2p[Nx2Lvl];
-
-    for ( i in 1:Ncell ) {
-      lambda[i] <- exp( a0 + a1[x1[i]] + a2[x2[i]] + a1a2[x1[i],x2[i]] );
-    }
-
-
-    # Convert a0,a1[],a2[],a1a2[,] to sum-to-zero b0,b1[],b2[],b1b2[,] :
-    for ( j1 in 1:Nx1Lvl ) { for ( j2 in 1:Nx2Lvl ) {
-      m[j1,j2] <- a0 + a1[j1] + a2[j2] + a1a2[j1,j2]; # cell means 
-    } }
-
-    b0 <- mean( m );
-    for ( j1 in 1:Nx1Lvl ) { b1[j1] <- mean( row(m,j1) ) - b0; }
-    for ( j2 in 1:Nx2Lvl ) { b2[j2] <- mean( col(m,j2) ) - b0; }
-    for ( j1 in 1:Nx1Lvl ) { for ( j2 in 1:Nx2Lvl ) {
-      b1b2[j1,j2] <- m[j1,j2] - ( b0 + b1[j1] + b2[j2] );
-    } }    
-
-    # Compute predicted proportions:
-    for ( j1 in 1:Nx1Lvl ) { for ( j2 in 1:Nx2Lvl ) {
-      expm[j1,j2] <- exp(m[j1,j2]);
-    } }
-    for ( j1 in 1:Nx1Lvl ) { for ( j2 in 1:Nx2Lvl ) {
-      ppx1x2p[j1,j2] <- expm[j1,j2]/sum(expm);
-    } }
-    for ( j1 in 1:Nx1Lvl ) { ppx1p[j1] <- sum(row(ppx1x2p,j1)); }
-    for ( j2 in 1:Nx2Lvl ) { ppx2p[j2] <- sum(col(ppx1x2p,j2)); }
-
-  }
-  model {
-    for ( i in 1:Ncell ) {
-      y[i] ~ poisson( lambda[i] );
-    }
-    a0 ~ normal( yLogMean , (yLogSD*2)^2 ) ;
-
-    for ( j1 in 1:Nx1Lvl ) { a1[j1] ~ normal( 0.0 , a1SD^2 ); }
-    a1SD ~ gamma(agammaShRa[1],agammaShRa[2]);
-
-    for ( j2 in 1:Nx2Lvl ) { a2[j2] ~ normal( 0.0 , a2SD^2 ); }
-    a2SD ~ gamma(agammaShRa[1],agammaShRa[2]) ;
-
-    for ( j1 in 1:Nx1Lvl ) { for ( j2 in 1:Nx2Lvl ) {
-      a1a2[j1,j2] ~ normal( 0.0 , a1a2SD^2 );
-    } }
-    a1a2SD ~ gamma(agammaShRa[1],agammaShRa[2]) ;
-  }
-  " # close quote for modelstring
-  writeLines(modelString,con="model.txt")
   #------------------------------------------------------------------------------
   # INTIALIZE THE CHAINS.
   # Let Stan do it automatically...
   #------------------------------------------------------------------------------
   # RUN THE CHAINS
   require(rstan)
-#  parameters = c( "ppx1x2p" , "ppx1p" , "ppx2p" , 
+#  parameters = c( "pp_x1x2_p" , "ppx1p" , "ppx2p" , 
 #                 "b0" ,  "b1" ,  "b2" ,  "b1b2" , "m" ,  
 #                 "a1SD" , "a2SD" , "a1a2SD" )
   adaptSteps = 1000 
   burnInSteps = 2000 
 
   # Translate to C++ and compile to DSO:
-  stanDso <- stan_model( model_code=modelString ) 
+
+  stanDso <- stan_model( file="Ycount-Xnom2fac-MpoissonExp.stan" ) 
   # Get MC sample of posterior:
   stanFit <- sampling( object=stanDso , 
                        data = dataList , 
@@ -360,13 +279,13 @@ plotMCMC = function( codaSamples ,
   openGraph(width=2.25*Nx2levels,height=1.5*Nx1levels)
   par( mar=c(3.5,2.5,3.0,1.5) , mgp=c(2,0.7,0) )
   layout(matrix(1:(Nx1levels*Nx2levels),nrow=Nx1levels,byrow=TRUE))
-  xLim = range(mcmcMat[,grep("^ppx1x2p",colnames(mcmcMat))])
+  xLim = range(mcmcMat[,grep("^pp_x1x2_p",colnames(mcmcMat))])
   for ( x1Idx in 1:Nx1levels ) {
     for ( x2Idx in 1:Nx2levels ) {
       cellN = datFrm[ datFrm[,x1Name]==x1levels[x1Idx] 
                       & datFrm[,x2Name]==x2levels[x2Idx] , yName ]
       totalN = sum(y)
-      paramCol = paste0("ppx1x2p[",x1Idx,",",x2Idx,"]")
+      paramCol = paste0("pp_x1x2_p[",x1Idx,",",x2Idx,"]")
       plotPost( mcmcMat[,paramCol] , xlab="Proportion" , cex.lab=1.0 ,
                 main=paste0( x1Name,":",x1levels[x1Idx] ,"  ",
                              x2Name,":",x2levels[x2Idx] ,"\n",

@@ -37,51 +37,6 @@ genMCMC = function( datFrm , yName="y" , xName="x" ,
     agammaShRa = agammaShRa 
   )
   #------------------------------------------------------------------------------
-  # THE MODEL.
-  modelstring = "
-  data {
-    int<lower=1> Ntotal;
-    int x[Ntotal];
-    int y[Ntotal]; 
-    int<lower=1> NxLvl;
-    real yMean;
-    real<lower=0> ySD;
-  }
-  parameters {
-    real a0;
-    real a[NxLvl];
-    real<lower=0> aSigma;
-    real<lower=0> ySigma;
-  }
-  transformed parameters {
-    real b0;
-    real b[NxLvl];
-    real m[NxLvl];
-
-    # Convert a0,a[] to sum-to-zero b0,b[] :
-    for ( j in 1:NxLvl ) { 
-      m[j] <- a0 + a[j];
-    } # cell means 
-
-    b0 <- mean( m );
-
-    for ( j in 1:NxLvl ) { 
-      b[j] <- m[j] - b0 ;
-    }
-  }
-  model {
-    for ( i in 1:Ntotal ) {
-      y[i] ~ normal( a0 + a[x[i]] , ySigma^2 );
-    }
-    ySigma ~ uniform( ySD/100 , ySD*10 );
-    a0 ~ normal( yMean , (ySD*5)^2 );
-    #
-    a ~ normal( 0.0 , aSigma^2 )
-    aSigma ~ gamma( agammaShRa[1] , agammaShRa[2] );
-  }
-  " # close quote for modelstring
-  writeLines(modelstring,con="TEMPmodel.txt")
-  #------------------------------------------------------------------------------
   # INTIALIZE THE CHAINS.
   initsList = list(
     a0 = yMean ,
@@ -93,14 +48,14 @@ genMCMC = function( datFrm , yName="y" , xName="x" ,
   # RUN THE CHAINS
   
   require(rstan)
-  parameters = c( "b0" ,  "b" , "m" , "aSigma" , "ySigma" )
+  parameters = c( "b0" ,  "b" , "m" , "a_sigma" , "y_sigma" )
   adaptSteps = 500 
   burnInSteps = 1000 
   nChains = 4 
 
 
   # Translate to C++ and compile to DSO:
-  stanDso <- stan_model( model_code=modelString ) 
+  stanDso <- stan_model( file="Ymet-Xnom1fac-MnormalHom.stan" ) 
   # Get MC sample of posterior:
   stanFit <- sampling( object=stanDso , 
                        data = dataList , 

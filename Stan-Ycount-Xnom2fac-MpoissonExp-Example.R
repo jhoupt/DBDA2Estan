@@ -27,8 +27,8 @@ x1x2contrasts = list(
         list( c("Black") , c("Blond") ) ,
         compVal=0.0 , ROPE=c(-0.1,0.1) ) 
 ) 
-numSavedSteps = 12000
-thinSteps = 10
+numSavedSteps = 1200
+thinSteps = 1
 #.............................................................................
 # myDataFrame = read.csv( file="FourByFourCount.csv" )
 # # Increase count by an integer multiplier:
@@ -86,13 +86,13 @@ source("Stan-Ycount-Xnom2fac-MpoissonExp.R")
 mcmcCoda = genMCMC( datFrm=myDataFrame , 
                     yName=yName , x1Name=x1Name , x2Name=x2Name ,
                     numSavedSteps=numSavedSteps , thinSteps=thinSteps , 
-                    saveName=fileNameRoot )
+                    saveName=fileNameRoot, nChains=4 )
 #------------------------------------------------------------------------------- 
 # Display diagnostics of chain, for specified parameters:
 parameterNames = varnames(mcmcCoda) 
 show( parameterNames ) # show all parameter names, for reference
-for ( parName in c("b0","b1[1]","b2[1]","b1b2[1,1]","ppx1x2p[1,1]",
-                   "a1SD","a1a2SD") ) {
+for ( parName in c("b0","b1[1]","b2[1]","b1b2[1,1]","pp_x1x2_p[1,1]",
+                   "a1_sd","a1a2_sd") ) {
   diagMCMC( codaObject=mcmcCoda , parName=parName , 
             saveName=fileNameRoot , saveType=graphFileType )
 }

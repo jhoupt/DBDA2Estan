@@ -35,85 +35,37 @@ genMCMC = function( datFrm , yName="y" , x1Name="x1" , x2Name="x2" ,
     y = y ,
     x1 = x1 ,
     x2 = x2 ,
-    Ntotal = Ntotal ,
-    Nx1Lvl = Nx1Lvl ,
-    Nx2Lvl = Nx2Lvl ,
+    n_total = Ntotal ,
+    n_x1_lvl = Nx1Lvl ,
+    n_x2_lvl = Nx2Lvl ,
     # data properties for scaling the prior:
-    yMean = yMean ,
-    ySD = ySD ,
-    agammaShRa = agammaShRa 
+    a_gamma_sh_ra = agammaShRa 
   )
   #------------------------------------------------------------------------------
-  # THE MODEL.
-  modelstring = "
-  data { 
-    int<lower=0> Ntotal;
-    int<lower=1> Nlevels;
-    int<lower=1> Nsubjects;
-    real y[Ntotal];
-    int<lower=1,upper=Nlevels> x[Ntotal];
-    int<lower=1,upper=Nsubjects> subj[Ntotal];
-  }
-  parameters {
-    vector[Nlevels] eox;
-    vector[Nsubjects] eos;
-    vector<lower=0>[Nsubjects] varOfSubj;
-    real<lower=0> grandMeanRT;
-  }
-  transformed parameters {
-    vector[Nlevels] effectOfX;
-    vector[Nsubjects] effectOfSubj;
-    vector<lower=0>[Ntotal] muTrial; 
-    vector<lower=0>[Ntotal] varTrial; 
-    vector<lower=0>[Ntotal] shapeTrial; 
-    vector<lower=0>[Ntotal] rateTrial; 
-
-    effectOfSubj <- eos - mean(eos);
-    effectOfX    <- eox - mean(eox);
-
-    for ( trial in 1:Ntotal ) {
-       muTrial[trial] <- grandMeanRT + effectOfX[ x[trial] ] + effectOfSubj[ subj[trial] ] ; 
-       varTrial[trial]<-                                          varOfSubj[ subj[trial] ] ; 
-       rate[trial] <- muTrial[trial] / varTrial[trial];
-       shape[trial] <- muTrial[trial] * rate[trial];
-    }
-  }
-  model {
-    for ( trial in 1:Ntotal ) {
-      y[trial] ~ gamma( shape[trial], rate[trial] );
-    }
-
-    grandMeanRT ~ gamma(1, .001); 
-    eox ~ normal(0,100);
-    eos ~ normal(0,100);
-    varOfSubj ~ gamma(2, 0.00005);
-  }
-  " # close quote for modelstring
-  writeLines(modelstring,con="TEMPmodel.txt")
-  #------------------------------------------------------------------------------
   # INTIALIZE THE CHAINS.
-  # Let JAGS it automatically...
+  # Let Stan do it automatically...
   #------------------------------------------------------------------------------
   # RUN THE CHAINS
-  require(rjags)
-  require(runjags)
-  parameters = c( "b0" ,  "b1" ,  "b2" ,  "b1b2" , "m" , "ySigma" , 
-                  "a1SD" , "a2SD" , "a1a2SD" )
+  require(rstan)
+  parameters = c( "b0" ,  "b1" ,  "b2" ,  "b1b2" , "m" , "y_sigma" , 
+                  "a1_sd" , "a2_sd" , "a1a2_sd" )
   adaptSteps = 1000 
   burnInSteps = 2000 
-  runJagsOut <- run.jags( method=runjagsMethod ,
-                          model="TEMPmodel.txt" , 
-                          monitor=parameters , 
-                          data=dataList ,  
-                          #inits=initsList , 
-                          n.chains=nChains ,
-                          adapt=adaptSteps ,
-                          burnin=burnInSteps , 
-                          sample=ceiling(numSavedSteps/nChains) ,
-                          thin=thinSteps ,
-                          summarise=FALSE ,
-                          plots=FALSE )
-  codaSamples = as.mcmc.list( runJagsOut )
+
+  # Translate to C++ and compile to DSO:
+  stanDso <- stan_model( file="Ymet-Xnom2fac-MnormalHom.stan" ) 
+  # Get MC sample of posterior:
+  stanFit <- sampling( object=stanDso , 
+                       data = dataList , 
+                       #pars = parameters , # optional
+                       chains = nChains ,
+                       iter = ( ceiling(numSavedSteps/nChains)*thinSteps
+                                +burnInSteps ) , 
+                       warmup = burnInSteps , 
+                       #init = initsList , # optional
+                        )
+  codaSamples = mcmc.list( lapply( 1:ncol(stanFit) , 
+                                   function(x) { mcmc(as.array(stanFit)[,x,]) } ) )
   
   # resulting codaSamples object has these indices: 
   #   codaSamples[[ chainIdx ]][ stepIdx , paramIdx ]
@@ -321,7 +273,7 @@ plotMCMC = function( codaSamples ,
       chainSub = round(seq(1,chainLength,length=20))
       for ( chnIdx in chainSub ) {
         m = mcmcMat[chnIdx,paste("m[",x1idx,",",x2idx,"]",sep="")]
-        s = mcmcMat[chnIdx,"ySigma"]
+        s = mcmcMat[chnIdx,"y_sigma"]
         normlim = qnorm( c(0.025,0.975) )
         yl = m+normlim[1]*s
         yh = m+normlim[2]*s

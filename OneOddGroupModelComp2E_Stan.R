@@ -64,76 +64,6 @@ dataList = list(
 )
 
 #------------------------------------------------------------------------------
-# THE MODEL.
-
-modelString = "
-data {
-  int<lower=1> nCond;
-  int<lower=1> nSubj;
-  int<lower=1> CondOfSubj[nSubj];
-  int<lower=1> nTrlOfSubj[nSubj];
-  int<lower=1> nCorrOfSubj[nSubj];
-
-}
-parameters {
-  real<lower=0,upper=1> theta[nSubj];
-  real<lower=0,upper=1> omega0;
-  real<lower=0,upper=1> omega[nCond];
-  real<lower=0> kappaMinusTwo[nCond];
-  real<lower=0,upper=1> modelProb1;
-}
-transformed parameters {
-  real<lower=0> kappa[nCond];
-  for ( j in 1:nCond ) {
-    kappa[j] <- kappaMinusTwo[j] + 2;
-  }
-}
-model {
-  real aP;
-  real bP;
-  real aBeta;
-  real bBeta;
-  #real logProb1;
-  #real logProb2;
-  real prob1;
-  real prob2;
-
-  # Constants for prior 
-  aP <- 1;
-  bP <- 1;
-
-  for ( s in 1:nSubj ) {
-    nCorrOfSubj[s] ~ binomial( nTrlOfSubj[s],  theta[s] );
-    # Use omega[j] for model index 1, omega0 for model index 2:
-    aBeta <- omega[CondOfSubj[s]] * kappaMinusTwo[CondOfSubj[s]] +1;
-    bBeta <- (1-omega[CondOfSubj[s]]) * kappaMinusTwo[CondOfSubj[s]] +1;
-
-    #logProb1 <- log(modelProb1)   + beta_log( theta[s], aBeta, bBeta );
-    prob1 <- modelProb1*exp(beta_log( theta[s], aBeta, bBeta ));
-
-    aBeta <-    omega0  * kappaMinusTwo[CondOfSubj[s]] +1;
-    bBeta <- (1-omega0) * kappaMinusTwo[CondOfSubj[s]] +1;
-    #logProb2 <- log(1-modelProb1) + beta_log( theta[s], aBeta, bBeta );
-    prob2 <- (1-modelProb1)*exp(beta_log( theta[s], aBeta, bBeta ));
-
-    #target +=  log_sum_exp(logProb1, logProb2) ; 
-    target +=  log(prob1 + prob2) ; 
-  }
-  for ( j in 1:nCond ) {
-    kappaMinusTwo[j] ~ gamma( 2.618 , 0.0809 ); # mode 20 , sd 20
-  }
-
-  omega0 ~ beta( aP, bP );
-  for ( j in 1:nCond ) {
-    omega[j] ~ beta( aP , bP );
-  }
-
-  modelProb1 ~ beta(1,1); 
-}
-" # close quote for modelstring
-writeLines( modelString , con="TEMPmodel.txt" )
-
-#------------------------------------------------------------------------------
 # INTIALIZE THE CHAINS.
 
 # Let Stan do it...
@@ -149,7 +79,7 @@ numSavedSteps=12000          # Total number of steps in chains to save.
 thinSteps=10                 # Number of steps to "thin" (1=keep every step).
 
 # Translate to C++ and compile to DSO:
-stanDso <- stan_model( model_code=modelString ) 
+stanDso <- stan_model( file="OneOddGroupModelComp.stan" ) 
 stanFit <- sampling( object=stanDso , 
                      data = dataList , 
                      pars = parameters , # optional

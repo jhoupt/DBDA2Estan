@@ -14,8 +14,8 @@ genMCMC = function( data , numSavedSteps=50000 , saveName=NULL ) {
   require(rstan)
   #-----------------------------------------------------------------------------
   # THE DATA.
-  if ( class(data)=="data.frame" ) {  # If data is a data.frame
-    y = myData$y                      # then pull out the column named y
+  if ( class(data)=="list" ) {  # If data is a data.frame
+    y = data$y                      # then pull out the column named y
   } else {                            # else
     y = data                          # rename the data as y.
   }
@@ -25,54 +25,8 @@ genMCMC = function( data , numSavedSteps=50000 , saveName=NULL ) {
   # Specify the data in a list, for later shipment to JAGS:
   dataList = list(
     y = y ,
-    Ntotal = Ntotal 
+    n_total = Ntotal 
   )
-  #-----------------------------------------------------------------------------
-  # THE MODEL.
-  modelString = "
-  data {
-    int<lower=0> Ntotal ;
-    int<lower=0,upper=1> y[Ntotal] ;
-  }
-  transformed data{
-    real<lower=0,upper=1> omega[2] ;
-    real<lower=0> kappa;
-    simplex[2] mPriorProb;
-
-    mPriorProb[1] <- .5;
-    mPriorProb[2] <- .5;
-
-    omega[1] <- .25;
-    omega[2] <- .75;
-
-    kappa <- 12;
-  }
-  parameters {
-    real<lower=0,upper=1> theta[2] ;
-    simplex[2] mProb;
-  }
-  transformed parameters{
-     real<lower=0> alpha[2];
-     real<lower=0> beta[2];
-
-     for (m in 1:2) {
-       alpha[m] <- omega[m]*(kappa-2)+1 ;
-       beta[m]  <- (1-omega[m])*(kappa-2)+1 ;
-     }
-  }
-  model {
-    mProb ~ dirichlet(mPriorProb);
-
-    for (m in 1:2) {
-       theta[m] ~ beta(alpha[m],beta[m]) ;
-    }
-
-    for (i in 1:Ntotal) {
-      target +=  log_sum_exp( log(mProb[1]) + bernoulli_log(y[i], theta[1]), log(mProb[2]) + bernoulli_log(y[i], theta[2]) ) ;
-    }
-
-  }
-  " # close quote for modelString
   #-----------------------------------------------------------------------------
   # INTIALIZE THE CHAINS.
   # Initial values of MCMC chains based on data:
@@ -91,7 +45,7 @@ genMCMC = function( data , numSavedSteps=50000 , saveName=NULL ) {
   }
   #-----------------------------------------------------------------------------
   # RUN THE CHAINS
-  parameters = c( "theta", "mProb")     # The parameters to be monitored
+  parameters = c( "theta", "m_prob")     # The parameters to be monitored
   burnInSteps = 500            # Stan defaults to iter/2 for overdispersed inits
   nChains = 4                  # nChains should be 2 or more for diagnostics 
   thinSteps = 4                # In Stan there is autocorrelation, so thin
@@ -100,7 +54,7 @@ genMCMC = function( data , numSavedSteps=50000 , saveName=NULL ) {
 #  stanDso <- stan_model( stanc_ret = stanCpp ) # Compile Stan DSO
   
   # Translate to C++ and compile to DSO:
-  stanDso <- stan_model( model_code=modelString ) 
+  stanDso <- stan_model(file="Ydich-Xnom1subj-MbernBetaModelComp.stan") 
   # Get MC sample of posterior:
   stanFit <- sampling( object=stanDso , 
                        data = dataList , 
@@ -126,41 +80,3 @@ genMCMC = function( data , numSavedSteps=50000 , saveName=NULL ) {
   }
   return( codaSamples )
 } # end function
-
-#------------------------------------------------------------------------------
-# THE DATA.
-
-N=9
-z=6
-y = c( rep(0,N-z) , rep(1,z) )
-
-#------
-# Run the model
-
-codaSamples <- genMCMC(y)
-
-#------------------------------------------------------------------------------
-# EXAMINE THE RESULTS.
-
-# Convert coda-object codaSamples to matrix object for easier handling.
-mcmcMat = as.matrix( codaSamples , chains=TRUE )
-pM1 = mcmcMat[,"mProb[1]"]
-pM2 = mcmcMat[,"mProb[2]"]
-thetaM1 = mcmcMat[, "theta[1]"]
-thetaM2 = mcmcMat[, "theta[2]"]
-
-# Plot histograms of sampled theta values for each model,
-# with pM displayed.
-openGraph(width=7,height=5)
-par( mar=0.5+c(3,1,2,1) , mgp=c(2.0,0.7,0) )
-layout( matrix(c(1,1,2,3),nrow=2,byrow=FALSE) , widths=c(1,2) )
-plotPost( pM1 , breaks=seq(0,1,0.05) , cenTend="mean" , xlab="m" , main="Model Index" )
-plotPost( thetaM1 , 
-          main=bquote( theta*" when m=1" * " ; p(m=1|D)" == .(signif(pM1,3)) ) , 
-          cex.main=1.75 , xlab=bquote(theta) , xlim=c(0,1) )
-plotPost( thetaM2 , 
-          main=bquote( theta*" when m=2" * " ; p(m=2|D)" == .(signif(pM2,3)) ) , 
-          cex.main=1.75 , xlab=bquote(theta) , xlim=c(0,1) )
-saveGraph( file=paste0(fileNameRoot,"Post") , type="eps" )
-
-

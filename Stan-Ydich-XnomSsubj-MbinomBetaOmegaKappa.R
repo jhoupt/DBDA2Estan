@@ -24,35 +24,8 @@ genMCMC = function( data , sName="s" , yName="y" ,
   dataList = list(
     z = z ,
     N = N ,
-    Nsubj = Nsubj
+    n_subj = Nsubj
   )
-  #-----------------------------------------------------------------------------
-  # THE MODEL.
-  modelString = "
-  data {
-    int<lower=1> Nsubj ;
-    int<lower=0> z[Nsubj] ;
-    int<lower=0> N[Nsubj] ;
-  }
-  parameters {
-    real<lower=0,upper=1> theta[Nsubj] ; // individual prob correct
-    real<lower=0,upper=1> omega ;        // group mode
-    real<lower=0> kappaMinusTwo ;        // group concentration minus two
-  }
-  transformed parameters {
-    real<lower=0> kappa ;  
-    kappa <- kappaMinusTwo + 2 ;
-  }
-  model {
-    omega ~ beta( 1 , 1 ) ;
-    kappaMinusTwo ~ gamma( 0.01 , 0.01 ) ; // mean=1 , sd=10 (generic vague)
-    // kappaMinusTwo ~ gamma( 1.105125 , 0.1051249 ) ;  # mode=1 , sd=10 
-    theta ~ beta( omega*(kappa-2)+1 , (1-omega)*(kappa-2)+1 ) ; // vectorized
-    for ( s in 1:Nsubj ) {
-      z[s] ~ binomial( N[s], theta[s] ) ;
-    }
-  }
-  " # close quote for modelString
   #-----------------------------------------------------------------------------
   # INTIALIZE THE CHAINS.
   # Initial values of MCMC chains based on data:
@@ -77,7 +50,7 @@ genMCMC = function( data , sName="s" , yName="y" ,
   nChains = 4                  # nChains should be 2 or more for diagnostics 
   
   # Translate to C++ and compile to DSO:
-  stanDso <- stan_model( model_code=modelString ) 
+  stanDso <- stan_model( file="Ydich-XnomSsubj-MbinomBetaOmegaKappa.stan" ) 
   # Get MC sample of posterior:
   stanFit <- sampling( object=stanDso , 
                        data = dataList , 

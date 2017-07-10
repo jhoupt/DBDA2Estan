@@ -30,52 +30,6 @@ genMCMC = function( data , zName="z" , NName="N" , sName="s" , cName="c" ,
     Ncat = Ncat
   )
   #-----------------------------------------------------------------------------
-  # THE MODEL.
-  modelString = "
-  data {
-    int<lower=1> Nsubj ;
-    int<lower=1> Ncat ;
-    int<lower=0> z[Nsubj] ;
-    int<lower=0> c[Nsubj] ;
-    int<lower=0> N[Nsubj] ;
-  }
-  parameters {
-    real<lower=0,upper=1> theta[Nsubj] ; // individual prob correct
-    real<lower=0,upper=1> omega[Ncat] ;  // group mode
-    real<lower=0> kappaMinusTwo[Ncat] ;  // group concentration minus two
-    real<lower=0> kappaMinusTwoO; 
-    real<lower=0,upper=1> omegaO;
-  }
-  transformed parameters {
-    real<lower=0> kappaO ;  
-    real<lower=0> kappa[Ncat] ;  
-    kappaO <- kappaMinusTwoO + 2;
-    for (j in 1:Ncat) { 
-      kappa[j] <- kappaMinusTwo[j] + 2;
-    }
-  }
-  model {
-
-    omegaO ~ beta( 1.0 , 1.0 ) ;
-    #omegaO ~ beta( 1.025 , 1.075 ); # mode=0.25 , concentration=2.1
-
-    kappaMinusTwoO ~ gamma( 0.01 , 0.01 );  # mean=1 , sd=10 (generic vague)
-    #kappaMinusTwoO ~ gamma( 1.01005 , 0.01005012 );  # mode=1 , sd=100
-    #kappaMinusTwoO ~ gamma( 1.105125 , 0.1051249 );  # mode=1 , sd=10
-    #kappaMinusTwoO ~ gamma( 1.105125 , 0.01051249 );  # mode=10 , sd=100
-
-    for (j in 1:Ncat) { 
-      omega[j] ~ beta( omegaO*(kappaO-2)+1 , (1-omegaO)*(kappaO-2)+1 );
-      kappaMinusTwo[j] ~ gamma( 0.01 , 0.01 ) ;# mean=1 , sd=10 (generic vague)
-    }
-
-    for ( s in 1:Nsubj ) {
-      theta[s] ~ beta( omega[c[s]]*(kappa[c[s]]-2)+1 , (1-omega[c[s]])*(kappa[c[s]]-2)+1 ) ; // vectorized
-      z[s] ~ binomial( N[s], theta[s] ) ;
-    }
-  }
-  " # close quote for modelString
-  #-----------------------------------------------------------------------------
   # INTIALIZE THE CHAINS.
   # Initial values of MCMC chains based on data:
   initsList = function() {
@@ -99,7 +53,7 @@ genMCMC = function( data , zName="z" , NName="N" , sName="s" , cName="c" ,
   nChains = 4                  # nChains should be 2 or more for diagnostics 
   
   # Translate to C++ and compile to DSO:
-  stanDso <- stan_model( model_code=modelString ) 
+  stanDso <- stan_model( file="Ybinom-XnomSsubjCcat-MbinomBetaOmegaKappa.stan" ) 
   # Get MC sample of posterior:
   stanFit <- sampling( object=stanDso , 
                        data = dataList , 

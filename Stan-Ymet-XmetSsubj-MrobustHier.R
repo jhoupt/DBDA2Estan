@@ -31,89 +31,9 @@ genMCMC = function( data , xName="x" , yName="y" , sName="s" , wName=NULL ,
     y = y ,
     s = s ,
     w = w ,
-    Nsubj = max(s)  , # should equal length(unique(s))
-    Ntotal = length(y)
+    n_subj = max(s)  , # should equal length(unique(s))
+    n_total = length(y)
   )
-  #-----------------------------------------------------------------------------
-  # THE MODEL.
-  
-  modelString = "
-  data {
-    int<lower=1> Nsubj ;
-    int<lower=1> Ntotal ;
-    real y[Ntotal] ;
-    real x[Ntotal] ;
-    real<lower=0> w[Ntotal] ;
-    int<lower=1> s[Ntotal] ;
-  }
-  transformed data {
-    // Standardize the data:
-    real zx[Ntotal] ;
-    real zy[Ntotal] ;
-    real zw[Ntotal] ;
-    real wm ;
-    real xm ;
-    real ym ;
-    real xsd ;
-    real ysd ;
-    xm <- mean(x) ;
-    ym <- mean(y) ;
-    wm <- mean(w) ;
-    xsd <- sd(x) ;
-    ysd <- sd(y) ;
-    for ( i in 1:Ntotal ) { // could be vectorized...?
-      zx[i] <- ( x[i] - xm ) / xsd ; 
-      zy[i] <- ( y[i] - ym ) / ysd ; 
-      zw[i] <- w[i] / wm  ;
-    }
-  }
-  parameters {
-    real zbeta0[Nsubj] ;
-    real zbeta1[Nsubj] ;
-    real<lower=0> zsigma ;
-    real zbeta0mu ; 
-    real zbeta1mu ; 
-    real<lower=0> zbeta0sigma ;
-    real<lower=0> zbeta1sigma ;
-    real<lower=0> nuMinusOne ;
-  }
-  transformed parameters {
-    real<lower=0> nu ;
-    real beta0[Nsubj] ;
-    real beta1[Nsubj] ;
-    real<lower=0> sigma ;
-    real beta0mu ; 
-    real beta1mu ; 
-    nu <- nuMinusOne+1 ;
-    // Transform to original scale:
-    for ( j in 1:Nsubj ) { // could be vectorized...?
-      beta1[j] <- zbeta1[j]*ysd/xsd;
-      beta0[j] <- zbeta0[j]*ysd  + ym - zbeta1[j]*xm*ysd/xsd;
-    }
-    beta1mu <- zbeta1mu*ysd/xsd;
-    beta0mu <- zbeta0mu*ysd  + ym - zbeta1mu*xm*ysd/xsd;
-    sigma <- zsigma * ysd ;
-  } 
-  model {
-    zbeta0mu ~ normal( 0 , 10 ) ;
-    zbeta1mu ~ normal( 0 , 10 ) ;
-    zsigma ~ uniform( 1.0E-3 , 1.0E+3 ) ;
-    zbeta0sigma ~ uniform( 1.0E-3 , 1.0E+3 ) ;
-    zbeta1sigma ~ uniform( 1.0E-3 , 1.0E+3 ) ;
-    nuMinusOne ~ exponential(1/29.0) ;
-    zbeta0 ~ normal( zbeta0mu , zbeta0sigma ) ; // vectorized
-    zbeta1 ~ normal( zbeta1mu , zbeta1sigma ) ; // vectorized
-    for ( i in 1:Ntotal ) {
-      zy[i] ~ student_t( 
-                nu ,
-                zbeta0[s[i]] + zbeta1[s[i]] * zx[i] ,
-                zw[i]*zsigma ) ;
-    }
-  }  
-  " # close quote for modelString
-  
-  # Write out modelString to a text file
-  writeLines( modelString , con="TEMPmodel.txt" )
   #-----------------------------------------------------------------------------
   # INTIALIZE THE CHAINS.
   
@@ -130,28 +50,28 @@ genMCMC = function( data , xName="x" , yName="y" , sName="s" , wName=NULL ,
   sigmaInit = sqrt(mean(lmInfo$res^2))
   nuInit = 10 # arbitrary
   initsList = list(
-    zsigma=sigmaInit  ,
+    z_sigma=sigmaInit  ,
     nu=nuInit ,
-    zbeta0mu=b0init ,
-    zbeta1mu=b1init ,
-    zbeta0=rep(b0init,max(s)) ,
-    zbeta1=rep(b1init,max(s))
+    z_beta_0_mu=b0init ,
+    z_beta_1_mu=b1init ,
+    z_beta_0=rep(b0init,max(s)) ,
+    z_beta_1=rep(b1init,max(s))
   )
   
   #-----------------------------------------------------------------------------
   # RUN THE CHAINS
-  parameters = c( "beta0" ,  "beta1" , 
-                  "beta0mu" , "beta1mu" ,
-                  "zbeta0" , "zbeta1" , 
-                  "zbeta0mu" , "zbeta1mu" , 
+  parameters = c( "beta_0", "beta_1" , 
+                  "beta_0mu", "beta_1_mu" ,
+                  "z_beta_0", "zbeta_1" , 
+                  "z_beta_0_mu" , "zbeta_1_mu" , 
                   "sigma" , "nu" , 
-                  "zsigma", "zbeta0sigma" , "zbeta1sigma"  )
+                  "z_sigma", "z_beta_0_sigma" , "z_beta_1_sigma"  )
   adaptSteps = 1000  # Number of steps to "tune" the samplers
   burnInSteps = 2000 
   nChains = 3 
   
   # Translate to C++ and compile to DSO:
-  stanDso <- stan_model( model_code=modelString ) 
+  stanDso <- stan_model( file="Stan-Ymet-XmetSsubj-MrobustHier.stan" ) 
   # Get MC sample of posterior:
   stanFit <- sampling( object=stanDso , 
                        data = dataList , 

@@ -1,5 +1,5 @@
-# Adapted for Stan by Joe Houpt
 # Example for Jags-Ydich-XnomSsubj-MbinomBetaOmegaKappa.R 
+# Adapted for Stan by Joe Houpt
 #------------------------------------------------------------------------------- 
 # Optional generic preliminaries:
 graphics.off() # This closes all of R's graphics windows.
