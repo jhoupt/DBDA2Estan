@@ -29,19 +29,17 @@ genMCMC = function( datFrm , yName="y" , xName="x" ,
   dataList = list(
     y = y ,
     x = x ,
-    Ntotal = Ntotal ,
-    NxLvl = NxLvl ,
+    n_total = Ntotal ,
+    n_x_lvl = NxLvl ,
     # data properties for scaling the prior:
-    yMean = yMean ,
-    ySD = ySD ,
-    agammaShRa = agammaShRa 
+    a_gamma_sh_ra = agammaShRa 
   )
   #------------------------------------------------------------------------------
   # INTIALIZE THE CHAINS.
   initsList = list(
     a0 = yMean ,
     a = aggregate( y , list( x ) , mean )[,2] - yMean ,
-    ySigma = mean( aggregate( y , list( x ) , sd )[,2] )
+    y_sigma = mean( aggregate( y , list( x ) , sd )[,2] )
     # Let STAN do other parameters automatically...
   )
   #------------------------------------------------------------------------------
@@ -173,7 +171,7 @@ plotMCMC = function( codaSamples ,
     chainSub = round(seq(1,chainLength,length=20))
     for ( chnIdx in chainSub ) {
       m = mcmcMat[chnIdx,paste("m[",xidx,"]",sep="")]
-      s = mcmcMat[chnIdx,paste("ySigma",sep="")]
+      s = mcmcMat[chnIdx,paste("y_sigma",sep="")]
       nu = 1000 # effectively normal instead of mcmcMat[chnIdx,"nu"]
       tlim = qt( c(0.025,0.975) , df=nu )
       yl = m+tlim[1]*s
@@ -215,7 +213,7 @@ plotMCMC = function( codaSamples ,
                     "\nvs\n",
                     paste(thisContrast[[2]],collapse=".") ) ,
                   compVal=thisContrast$compVal , ROPE=thisContrast$ROPE )
-        plotPost( postContrast/mcmcMat[,"ySigma"] , xlab="Effect Size" ,
+        plotPost( postContrast/mcmcMat[,"y_sigma"] , xlab="Effect Size" ,
                   main=paste0( 
                     paste(thisContrast[[1]],collapse="."), 
                     "\nvs\n",

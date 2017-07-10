@@ -1,58 +1,57 @@
 data {
-  int<lower=1> nCond;
-  int<lower=1> nSubj;
-  int<lower=1> CondOfSubj[nSubj];
-  int<lower=1> nTrlOfSubj[nSubj];
+  int<lower=1> n_cond;
+  int<lower=1> n_subj;
+  int<lower=1> cond_of_subj[n_subj];
+  int<lower=1> n_trl_of_subj[n_subj];
+  int<lower=0> n_corr_of_subj[n_subj];
+
+}
+transformed data {
+  real a_p;
+  real b_p;
+  // Constants for prior 
+  a_p = 1;
+  b_p = 1;
 
 }
 parameters {
-  vector[nSubj]<lower=0,upper=1> theta;
+  vector<lower=0,upper=1>[n_subj] theta;
   real<lower=0,upper=1> omega0;
-  vector[nCond]<lower=0,upper=1> omega;
-  vector[nCond]<lower=0> kappaMinusTwo;
-  real<lower=0,upper=1> modelProb1;
+  vector<lower=0,upper=1>[n_cond] omega;
+  vector<lower=0>[n_cond] kappa_minus_two;
+  real<lower=0,upper=1> model_prob_1;
 }
 transformed parameters {
-  vector[nCond]<lower=0> kappa;
-    kappa = kappaMinusTwo + 2;
-  }
+  vector<lower=0>[n_cond] kappa;
+  kappa = kappa_minus_two + 2;
 }
 model {
-  real aP;
-  real bP;
-  real aBeta;
-  real bBeta;
-  real logProb1;
-  real logProb2;
+  // Uncomment and set parameters to something other than 1, 1 for 
+  // non-uniform prior
+  //model_prob_1 ~ beta(1,1); 
 
-  // Constants for prior 
-  aP = 1;
-  bP = 1;
+  n_corr_of_subj ~ binomial(n_trl_of_subj,theta);
 
-  nCorrOfSubj ~ binomial(nTrlOfSubj,theta);
-  for ( s in 1:nSubj ) {
+  for ( s in 1:n_subj ) {
+    real a_beta0;
+    real b_beta0;
+    real a_beta;
+    real b_beta;
+
     // Use omega[j] for model index 1, omega0 for model index 2:
-    aBeta = omega[CondOfSubj[s]] * kappaMinusTwo[CondOfSubj[s]] +1;
-    bBeta = (1-omega[CondOfSubj[s]]) * kappaMinusTwo[CondOfSubj[s]] +1;
+    a_beta = omega[cond_of_subj[s]] * kappa_minus_two[cond_of_subj[s]] + 1;
+    b_beta = (1 - omega[cond_of_subj[s]]) * kappa_minus_two[cond_of_subj[s]]
+             + 1;
 
-    logProb1 = log(modelProb1)   + beta_lpdf( theta[s], aBeta, bBeta );
+    a_beta0 =    omega0  * kappa_minus_two[cond_of_subj[s]] + 1;
+    b_beta0 = (1-omega0) * kappa_minus_two[cond_of_subj[s]] + 1;
 
-    aBeta =    omega0  * kappaMinusTwo[CondOfSubj[s]] +1;
-    bBeta = (1-omega0) * kappaMinusTwo[CondOfSubj[s]] +1;
 
-    logProb2 = log1m(modelProb1) + beta_lpdf( theta[s], aBeta, bBeta );
-
-    //target +=  log_sum_exp(logProb1, logProb2) ; 
-    target +=  log(prob1 + prob2) ; 
+    target +=  log_mix(model_prob_1, beta_lpdf(theta[s] | a_beta, b_beta),
+                       beta_lpdf(theta[s] | a_beta0, b_beta0));
   }
-  for ( j in 1:nCond ) {
-    kappaMinusTwo[j] ~ gamma( 2.618 , 0.0809 ); // mode 20 , sd 20
-  }
+  kappa_minus_two ~ gamma(2.618, 0.0809); // mode 20 , sd 20
 
-  omega0 ~ beta( aP, bP );
-  for ( j in 1:nCond ) {
-    omega[j] ~ beta( aP , bP );
-  }
-
-  modelProb1 ~ beta(1,1); 
+  omega0 ~ beta(a_p, b_p);
+  omega ~ beta(a_p, b_p);
 }

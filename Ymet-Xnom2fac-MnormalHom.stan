@@ -5,7 +5,7 @@ data {
   real y[n_total];
   int x1[n_total];
   int x2[n_total];
-  real a_gamma_sh_ra[2];
+  real<lower=0> a_gamma_sh_ra[2];
 }
 transformed data { 
   real y_mean;

@@ -18,22 +18,22 @@ fileNameRoot="OneOddGroupModelComp2E-"
 # the number of trials s/he experienced, and the number correct.
 npg = 20  # number of subjects per group
 ntrl = 20 # number of trials per subject
-CondOfSubj = c( rep(1,npg) , rep(2,npg) , rep(3,npg) , rep(4,npg) )
-nTrlOfSubj = rep( ntrl , 4*npg )
+cond_of_subj = c( rep(1,npg) , rep(2,npg) , rep(3,npg) , rep(4,npg) )
+n_trl_of_subj = rep( ntrl , 4*npg )
 set.seed(47405)
 condMeans = c(.40,.50,.51,.52)
 nCorrOfSubj = c( rbinom(npg,ntrl,condMeans[1]) , rbinom(npg,ntrl,condMeans[2]) ,
                  rbinom(npg,ntrl,condMeans[3]) , rbinom(npg,ntrl,condMeans[4]) )
-nCond = length(unique(CondOfSubj))
-nSubj = length(CondOfSubj)
+n_cond = length(unique(cond_of_subj))
+n_subj = length(cond_of_subj)
 # jitter the data to be as close as possible to desired condition means:
-for ( cIdx in 1:nCond ) {
-  nToAdd = round(condMeans[cIdx]*npg*ntrl)-sum(nCorrOfSubj[CondOfSubj==cIdx])
+for ( cIdx in 1:n_cond ) {
+  nToAdd = round(condMeans[cIdx]*npg*ntrl)-sum(nCorrOfSubj[cond_of_subj==cIdx])
   if ( nToAdd > 0 ) {
     for ( i in 1:nToAdd ) {
       thisNcorr = ntrl
       while ( thisNcorr == ntrl ) {
-        randSubjIdx = sample(which(CondOfSubj==cIdx),size=1)
+        randSubjIdx = sample(which(cond_of_subj==cIdx),size=1)
         thisNcorr = nCorrOfSubj[randSubjIdx]
       }
       nCorrOfSubj[randSubjIdx] = nCorrOfSubj[randSubjIdx]+1
@@ -43,7 +43,7 @@ for ( cIdx in 1:nCond ) {
     for ( i in 1:abs(nToAdd) ) {
       thisNcorr = 0
       while ( thisNcorr == 0 ) {
-        randSubjIdx = sample(which(CondOfSubj==cIdx),size=1)
+        randSubjIdx = sample(which(cond_of_subj==cIdx),size=1)
         thisNcorr = nCorrOfSubj[randSubjIdx]
       }
       nCorrOfSubj[randSubjIdx] = nCorrOfSubj[randSubjIdx]-1
@@ -52,15 +52,15 @@ for ( cIdx in 1:nCond ) {
 }
 
 
-show( aggregate( nCorrOfSubj , by=list(CondOfSubj) , FUN=mean ) / ntrl )
+show( aggregate( nCorrOfSubj , by=list(cond_of_subj) , FUN=mean ) / ntrl )
 
 # Package the data:
 dataList = list(
-  nCond = nCond ,
-  nSubj = nSubj ,
-  CondOfSubj = CondOfSubj ,
-  nTrlOfSubj = nTrlOfSubj ,
-  nCorrOfSubj = nCorrOfSubj
+  n_cond = n_cond ,
+  n_subj = n_subj ,
+  cond_of_subj = cond_of_subj ,
+  n_trl_of_subj = n_trl_of_subj ,
+  n_corr_of_subj = nCorrOfSubj
 )
 
 #------------------------------------------------------------------------------
@@ -71,7 +71,7 @@ dataList = list(
 #------------------------------------------------------------------------------
 # RUN THE CHAINS.
 
-parameters = c("omega","kappa","omega0","theta","modelProb1")
+parameters = c("omega","kappa","omega0","theta","model_prob_1")
 adaptSteps = 1000            # Number of steps to "tune" the samplers.
 burnInSteps = 5000           # Number of steps to "burn-in" the samplers.
 nChains = 3                  # Number of chains to run.
@@ -108,7 +108,7 @@ save( stanDso , file=paste(fileNameRoot,"StanDso.Rdata",sep="") )
 
 parameterNames = varnames(codaSamples) # get all parameter names
 show(parameterNames)
-for ( parName in c("modelProb1","omega[1]","omega0","kappa[1]","theta[1]") ) { 
+for ( parName in c("model_prob_1","omega[1]","omega0","kappa[1]","theta[1]") ) { 
   diagMCMC( codaSamples , parName=parName ,
             saveName=fileNameRoot , saveType="eps" )
 }
@@ -121,7 +121,7 @@ mcmcMat = as.matrix(codaSamples,chains=TRUE)
 xLim=c(0.35,0.75)
 
 # Display the model index
-pM1 = mcmcMat[, "modelProb1" ]
+pM1 = mcmcMat[, "model_prob_1" ]
 pM2 = 1 - pM1
 string1 =paste("p( Diff Omega M1 | D )=",round(mean(pM1),3),sep="")
 string2 =paste("p( Same Omega M2 | D )=",round(mean(pM2),3),sep="")
@@ -130,7 +130,7 @@ nStepsToPlot = 1000
 plot( 1:nStepsToPlot , pM1[1:nStepsToPlot] , type="l" , lwd=2 , ylim=c(0,1),
       xlab="Step in Markov chain" , ylab="Model Index (1, 2)" ,
       main=paste(string1,", ",string2,sep="") , col="skyblue" )
-saveGraph(file=paste0(fileNameRoot,"modelProb1"),type="eps")
+saveGraph(file=paste0(fileNameRoot,"model_prob_1"),type="eps")
 
 # Display the omega0 posterior
 omega0sample = mcmcMat[, "omega0" ]
