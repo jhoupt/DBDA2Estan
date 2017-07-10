@@ -19,22 +19,22 @@ genMCMC = function( data , zName="z" , NName="N" , sName="s" , cName="c" ,
   N = data[[NName]]
   s = data[[sName]]
   c = data[[cName]]
-  Nsubj = length(unique(s))
-  Ncat =  length(unique(c))
+  n_subj = length(unique(s))
+  n_cat =  length(unique(c))
   # Specify the data in a list, for later shipment to JAGS:
   dataList = list(
     z = z ,
     N = N ,
     c = as.numeric(c) , # c in STAN is numeric, in R is possibly factor
-    Nsubj = Nsubj,
-    Ncat = Ncat
+    n_subj = n_subj,
+    n_cat = n_cat
   )
   #-----------------------------------------------------------------------------
   # INTIALIZE THE CHAINS.
   # Initial values of MCMC chains based on data:
   initsList = function() {
-    thetaInit = rep(NA,Nsubj)
-    for ( sIdx in 1:Nsubj ) { # for each subject
+    thetaInit = rep(NA,n_subj)
+    for ( sIdx in 1:n_subj ) { # for each subject
       resampledZ = rbinom(1, size=N[sIdx] , prob=z[sIdx]/N[sIdx] )
       thetaInit[sIdx] = resampledZ/N[sIdx]
     }
@@ -43,7 +43,7 @@ genMCMC = function( data , zName="z" , NName="N" , sName="s" , cName="c" ,
     return( list( theta=thetaInit , 
                   omega=aggregate(thetaInit,by=list(c),FUN=mean)$x ,
                   omegaO=mean(thetaInit) ,
-                  kappaMinusTwo=rep(kappaInit-2,Ncat) ,
+                  kappaMinusTwo=rep(kappaInit-2,n_cat) ,
                   kappaMinusTwoO=kappaInit-2 ) )
   }
   #-----------------------------------------------------------------------------
@@ -170,8 +170,8 @@ plotMCMC = function( codaSamples ,
   N = data[[NName]]
   s = data[[sName]]
   c = data[[cName]]
-  Nsubj = length(unique(s))
-  Ncat =  length(unique(c))
+  n_subj = length(unique(s))
+  n_cat =  length(unique(c))
   # Now plot the posterior:
   mcmcMat = as.matrix(codaSamples,chains=TRUE)
   chainLength = NROW( mcmcMat )

@@ -61,9 +61,9 @@ genMCMC = function( data , xName="x" , yName="y" , sName="s" , wName=NULL ,
   #-----------------------------------------------------------------------------
   # RUN THE CHAINS
   parameters = c( "beta_0", "beta_1" , 
-                  "beta_0mu", "beta_1_mu" ,
-                  "z_beta_0", "zbeta_1" , 
-                  "z_beta_0_mu" , "zbeta_1_mu" , 
+                  "beta_0_mu", "beta_1_mu" ,
+                  "z_beta_0", "z_beta_1" , 
+                  "z_beta_0_mu" , "z_beta_1_mu" , 
                   "sigma" , "nu" , 
                   "z_sigma", "z_beta_0_sigma" , "z_beta_1_sigma"  )
   adaptSteps = 1000  # Number of steps to "tune" the samplers
@@ -71,7 +71,7 @@ genMCMC = function( data , xName="x" , yName="y" , sName="s" , wName=NULL ,
   nChains = 3 
   
   # Translate to C++ and compile to DSO:
-  stanDso <- stan_model( file="Stan-Ymet-XmetSsubj-MrobustHier.stan" ) 
+  stanDso <- stan_model( file="Ymet-XmetSsubj-MrobustHier.stan" ) 
   # Get MC sample of posterior:
   stanFit <- sampling( object=stanDso , 
                        data = dataList , 
@@ -134,10 +134,10 @@ plotMCMC = function( codaSamples , data ,
   nSubj = length(unique(s)) # should be same as max(s)
   mcmcMat = as.matrix(codaSamples,chains=TRUE)
   chainLength = NROW( mcmcMat )
-  beta0mu = mcmcMat[,"beta0mu"]
-  beta1mu = mcmcMat[,"beta1mu"]
-  zbeta0mu = mcmcMat[,"zbeta0mu"]
-  zbeta1mu = mcmcMat[,"zbeta1mu"]
+  beta_0_mu = mcmcMat[,"beta_0_mu"]
+  beta_1_mu = mcmcMat[,"beta_1_mu"]
+  z_beta_0_mu = mcmcMat[,"z_beta_0_mu"]
+  z_beta_1_mu = mcmcMat[,"z_beta_1_mu"]
   sigma = mcmcMat[,"sigma"]
   nu = mcmcMat[,"nu"]
   log10nu = log10(nu)
@@ -156,7 +156,7 @@ plotMCMC = function( codaSamples , data ,
       if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
       text(0.5, 0.5, txt, cex=1.25 ) # was cex=cex.cor*r
     }
-    pairs( cbind( beta0mu , beta1mu , sigma , log10nu )[plotIdx,] ,
+    pairs( cbind( beta_0_mu , beta_1_mu , sigma , log10nu )[plotIdx,] ,
            labels=c( expression(mu[beta*0]) , expression(mu[beta*1]) , 
                      expression(mu[beta*2]) , 
                      expression(sigma) ,  expression(log10(nu)) ) , 
@@ -173,19 +173,19 @@ plotMCMC = function( codaSamples , data ,
   openGraph(width=8,height=8)
   layout( matrix( 1:9 , nrow=3, byrow=TRUE ) )
   par( mar=c(4,4,2.5,0.5) , mgp=c(2.5,0.7,0) )
-  histInfo = plotPost( beta0mu , cex.lab = 1.75 , showCurve=showCurve ,
+  histInfo = plotPost( beta_0_mu , cex.lab = 1.75 , showCurve=showCurve ,
                        compVal=compValBeta0 , ROPE=ropeBeta0 ,
                        xlab=bquote(mu[beta*0]) , main=paste("Intercept, Group Level") )
-  histInfo = plotPost( beta1mu , cex.lab = 1.75 , showCurve=showCurve ,
+  histInfo = plotPost( beta_1_mu , cex.lab = 1.75 , showCurve=showCurve ,
                        compVal=compValBeta1 , ROPE=ropeBeta1 ,
                        xlab=bquote(mu[beta*1]) , main=paste("Slope, Group Level") )
-  histInfo = plotPost( zbeta0mu , cex.lab = 1.75 , showCurve=showCurve ,
+  histInfo = plotPost( z_beta_0_mu , cex.lab = 1.75 , showCurve=showCurve ,
                        #compVal=compValBeta0 , ROPE=ropeBeta0 ,
                        xlab=bquote(zmu[beta*0]) , main=paste("Intercept, Group Level") )
-  histInfo = plotPost( zbeta1mu , cex.lab = 1.75 , showCurve=showCurve ,
+  histInfo = plotPost( z_beta_1_mu , cex.lab = 1.75 , showCurve=showCurve ,
                        #compVal=compValBeta1 , ROPE=ropeBeta1 ,
                        xlab=bquote(zmu[beta*1]) , main=paste("Slope, Group Level") )
-  #plot( beta1mu[plotIdx] , beta0mu[plotIdx] , 
+  #plot( beta_1_mu[plotIdx] , beta_0_mu[plotIdx] , 
   #      xlab=bquote(mu[beta*1]) , ylab=bquote(mu[beta*0]) ,
   #      col="skyblue" , cex.lab = 1.75 )
   histInfo = plotPost( sigma , cex.lab = 1.75 , showCurve=showCurve ,
@@ -226,8 +226,8 @@ plotMCMC = function( codaSamples , data ,
       nPredCurves=30
       xComb = seq(xLim[1],xLim[2],length=301)
       for ( i in floor(seq(1,chainLength,length=nPredCurves)) ) {
-        b0 = mcmcMat[i,paste0("beta0[",sIdx,"]")]
-        b1 = mcmcMat[i,paste0("beta1[",sIdx,"]")]
+        b0 = mcmcMat[i,paste0("beta_0[",sIdx,"]")]
+        b1 = mcmcMat[i,paste0("beta_1[",sIdx,"]")]
         lines( xComb , b0+b1*xComb , col="skyblue" )
       }
       points( x[thisSrows] , y[thisSrows] , pch=19 )
@@ -255,8 +255,8 @@ plotMCMC = function( codaSamples , data ,
   nPredCurves=70
   xComb = seq(xLim[1],xLim[2],length=301)
   for ( i in floor(seq(1,chainLength,length=nPredCurves)) ) {
-    b0 = mcmcMat[i,paste0("beta0mu")]
-    b1 = mcmcMat[i,paste0("beta1mu")]
+    b0 = mcmcMat[i,paste0("beta_0_mu")]
+    b1 = mcmcMat[i,paste0("beta_1_mu")]
     lines( xComb , b0+b1*xComb , col="skyblue" )
   }
   for ( sIdx in 1:nSubj ) {

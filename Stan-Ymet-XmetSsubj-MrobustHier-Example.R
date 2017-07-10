@@ -35,8 +35,8 @@ mcmcCoda = genMCMC( data=myData ,
 # #------------------------------------------------------------------------------- 
 # # Display diagnostics of chain, for specified parameters:
 parameterNames = varnames(mcmcCoda) # get all parameter names
-for ( parName in c("beta0mu","beta1mu","nu","sigma",
-                   "beta0[1]","beta1[1]") ) {
+for ( parName in c("beta_0_mu","beta_1_mu","nu","sigma",
+                   "beta_0[1]","beta_1[1]") ) {
  diagMCMC( codaObject=mcmcCoda , parName=parName , 
            saveName=fileNameRoot , saveType=graphFileType )
 }
