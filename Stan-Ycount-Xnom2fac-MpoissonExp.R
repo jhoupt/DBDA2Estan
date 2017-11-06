@@ -1,18 +1,17 @@
 
 # Accompanies the book:
 #   Kruschke, J. K. (2014). Doing Bayesian Data Analysis: 
-#   A Tutorial with R and JAGS, 2nd Edition. Academic Press / Elsevier.
+#   A Tutorial with R and Stan, 2nd Edition. Academic Press / Elsevier.
 # Adapted for Stan by Joe Houpt
 
-source("DBDA2E-utilities.R")
+source("DBDA2E-utilities-stan.R")
 
-#===============================================================================
+#===========================================================================
 
 genMCMC = function( datFrm , yName="y" , x1Name="x1" , x2Name="x2" ,
                     numSavedSteps=50000 , thinSteps=1 , saveName=NULL ,
-                    runjagsMethod=runjagsMethodDefault , 
                     nChains=nChainsDefault ) { 
-  #------------------------------------------------------------------------------
+  #-------------------------------------------------------------------------
   # THE DATA.
   # Convert data file columns to generic x,y variable names for model:
   y = as.numeric(datFrm[,yName])
@@ -36,11 +35,11 @@ genMCMC = function( datFrm , yName="y" , x1Name="x1" , x2Name="x2" ,
     show( agammaShRa )
     openGraph(height=5,width=7)
     xv = seq(0,yLogSD/2+2*2*yLogSD,length=501)
-    plot( xv , dgamma( xv , shape=agammaShRa[1] , rate=agammaShRa[2] ) ,
-          xlab="SD" , ylab="p(SD)" , main="Prior on SD parameters" , type="l" ,
-          col="skyblue" , lwd=3 )
+    plot( xv , dgamma( xv, shape=agammaShRa[1], rate=agammaShRa[2] ) ,
+          xlab="SD", ylab="p(SD)", main="Prior on SD parameters", type="l",
+          col="skyblue", lwd=3)
   }
-  # Specify the data in a list for sending to JAGS:
+  # Specify the data in a list for sending to Stan:
   dataList = list(
     y = y ,
     x1 = x1 ,
@@ -81,9 +80,9 @@ genMCMC = function( datFrm , yName="y" , x1Name="x1" , x2Name="x2" ,
   # Or, accomplish above in one "stan" command; note stanDso is not separate.
   
   # For consistency with JAGS-oriented functions in DBDA2E collection, 
-  # convert stan format to coda format:
-  codaSamples = mcmc.list( lapply( 1:ncol(stanFit) , 
-                               function(x) { mcmc(as.array(stanFit)[,x,]) } ) )
+  # convert Stan format to coda format:
+  codaSamples = mcmc.list(lapply(1:ncol(stanFit), 
+                              function(x) { mcmc(as.array(stanFit)[,x,]) }))
   # resulting codaSamples object has these indices: 
   #   codaSamples[[ chainIdx ]][ stepIdx , paramIdx ]
   if ( !is.null(saveName) ) {
@@ -95,12 +94,12 @@ genMCMC = function( datFrm , yName="y" , x1Name="x1" , x2Name="x2" ,
 
 }
 
-#===============================================================================
+#===========================================================================
 
-smryMCMC = function(  codaSamples , 
-                      datFrm=NULL , x1Name=NULL , x2Name=NULL ,
-                      x1contrasts=NULL , x2contrasts=NULL , x1x2contrasts=NULL ,
-                      saveName=NULL ) {
+smryMCMC = function(codaSamples, 
+                    datFrm=NULL, x1Name=NULL, x2Name=NULL ,
+                    x1contrasts=NULL, x2contrasts=NULL, x1x2contrasts=NULL,
+                    saveName=NULL ) {
   # All single parameters:
   parameterNames = varnames(codaSamples) 
   if ( !is.null(datFrm) & !is.null(x1Name) & !is.null(x2Name) ) {
