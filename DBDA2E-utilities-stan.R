@@ -6,13 +6,14 @@
 # R's working memory, at R's command line type:
 # source("DBDA2E-utilities.R")
 
-#------------------------------------------------------------------------------
+#---------------------------------------------------------------------------
 
 bookInfo = "Kruschke, J. K. (2015). Doing Bayesian Data Analysis, Second Edition:\nA Tutorial with R, JAGS, and Stan. Academic Press / Elsevier."
 bannerBreak = "\n*********************************************************************\n"
 cat(paste0(bannerBreak,bookInfo,bannerBreak,"\n"))
 
-#------------------------------------------------------------------------------
+nChainsDefault <- 4
+#---------------------------------------------------------------------------
 # Functions for opening and saving graphics that operate the same for 
 # Windows and Macintosh and Linux operating systems. At least, that's the hope!
 
